@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生版MBTI人格测评</title>
+    <!-- 引入Chart.js绘制雷达图 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #34495e;
+            margin: 15px 0;
+            font-size: 18px;
+        }
+        .desc {
+            line-height: 1.6;
+            margin: 20px 0;
+            color: #666;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 25px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .progress {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 16px;
+            color: #555;
+        }
+        .question {
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        .score-options {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .score-option {
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        .score-option input {
+            display: none;
+        }
+        .score-option label {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .score-option input:checked + label {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        .btn-group {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .result-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .radar-chart {
+            flex: 1;
+            min-width: 300px;
+            height: 400px;
+        }
+        .result-text {
+            flex: 1;
+            min-width: 300px;
+        }
+        .result-item {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .hidden {
+            display: none;
+        }
+        .hint {
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 欢迎页 -->
+        <div class="page active" id="welcome-page">
+            <h1>🎓 学生版MBTI人格测评</h1>
+            <div class="desc">
+                <p>本测评专为学生群体定制，共80题，覆盖校园学习、宿舍生活、社团活动等场景：</p>
+                <p>✅ 评分规则：1=非常不符合 | 2=比较不符合 | 3=一般 | 4=比较符合 | 5=非常符合</p>
+                <p>✅ 答案无对错，请根据自身真实情况作答</p>
+                <p>✅ 完成后自动生成维度雷达图+专属人格解读，支持导出报告</p>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn" onclick="startTest()">开始测评</button>
+            </div>
+        </div>
+
+        <!-- 答题页 -->
+        <div class="page" id="question-page">
+            <div class="progress">
+                <span id="progress-text">进度：1/80</span>
+            </div>
+            <div class="question" id="question-text"></div>
+            <div class="score-options">
+                <div class="score-option">
+                    <input type="radio" name="score" id="score1" value="1">
+                    <label for="score1">1</label>
+                </div>
+                <div class="score-option">
+                    <input type="radio" name="score" id="score2" value="2">
+                    <label for="score2">2</label>
+                </div>
+                <div class="score-option">
+                    <input type="radio" name="score" id="score3" value="3">
+                    <label for="score3">3</label>
+                </div>
+                <div class="score-option">
+                    <input type="radio" name="score" id="score4" value="4">
+                    <label for="score4">4</label>
+                </div>
+                <div class="score-option">
+                    <input type="radio" name="score" id="score5" value="5">
+                    <label for="score5">5</label>
+                </div>
+            </div>
+            <div class="hint">1=非常不符合 | 2=比较不符合 | 3=一般 | 4=比较符合 | 5=非常符合</div>
+            <div class="btn-group">
+                <button class="btn" id="prev-btn" onclick="prevQuestion()" disabled>上一题</button>
+                <button class="btn" id="next-btn" onclick="nextQuestion()">下一题</button>
+            </div>
+        </div>
+
+        <!-- 结果页 -->
+        <div class="page" id="result-page">
+            <h1>🎯 你的MBTI测评结果</h1>
+            <h2 id="mbti-type"></h2>
+            <div class="result-container">
+                <div class="radar-chart">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <div class="result-text">
+                    <div class="result-item">
+                        <strong>维度得分：</strong>
+                        <div id="dimension-scores"></div>
+                    </div>
+                    <div class="result-item" style="margin-top: 20px;">
+                        <strong>人格解读：</strong>
+                        <div id="mbti-interpret" style="margin-top: 10px; line-height: 1.8;"></div>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn" onclick="saveReport()">💾 保存测评报告</button>
+                <button class="btn" onclick="restartTest()">🔄 重新测评</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 核心配置
+        const DIMENSION_NAMES = {
+            1: "能量来源(E/I)",
+            2: "认知方式(S/N)",
+            3: "决策方式(T/F)",
+            4: "生活方式(J/P)",
+            5: "行事风格(A/O)",
+            6: "人际温度(H/C)"
+        };
+
+        // 题库（简化版，保留核心题目）
+        const QUESTIONS = [
+            // E/I维度
+            {id:1, text:"社团团建结束后，我反而觉得放松，不是疲惫。", dimension:1},
+            {id:2, text:"周末宅宿舍独处超过1天，我会想约同学去食堂/图书馆。", dimension:1},
+            {id:3, text:"泡图书馆独处学习一下午，我会觉得精力更足。（反向题）", dimension:1},
+            {id:4, text:"班级聚会待2小时以上，我会想回宿舍独处休息。（反向题）", dimension:1},
+            {id:5, text:"面对新同桌/舍友，我能自然开启话题，不觉得紧张。", dimension:1},
+            // S/N维度
+            {id:6, text:"记笔记时，我会逐字记录老师的话，而非只记框架。", dimension:2},
+            {id:7, text:"选课时，我更关注“这门课对未来考研/就业的意义”，而非仅看学分。", dimension:2},
+            {id:8, text:"做实验时，我会想“能不能改进步骤”，而非只按手册做。", dimension:2},
+            {id:9, text:"我经常畅想毕业后的规划，而非只关注当下的考试分数。", dimension:2},
+            {id:10, text:"作业要求“创新思路”时，我更愿意按模板做，而非尝试新方法。（反向题）", dimension:2},
+            // T/F维度
+            {id:11, text:"小组作业分工，我优先看“谁适合做”，而非“谁需要照顾”。", dimension:3},
+            {id:12, text:"和舍友吵架后，我先关心他的感受，而非争论谁对谁错。", dimension:3},
+            {id:13, text:"我认为“考勤公平”比“照顾迟到的同学”更重要。", dimension:3},
+            {id:14, text:"同学挂科难过时，我先安慰他，而非立刻讲“该怎么补考”。", dimension:3},
+            {id:15, text:"选选修课，我会列利弊清单，而非凭感觉。", dimension:3},
+            // J/P维度
+            {id:16, text:"我会制定详细的备考计划表，临时调整会让我慌。", dimension:4},
+            {id:17, text:"考试周，我会根据每天的状态调整复习内容，而非按固定计划。", dimension:4},
+            {id:18, text:"作业截止前3天我就会写完，而非拖到最后一晚。", dimension:4},
+            {id:19, text:"放假前，我不做详细的学习/游玩计划，想走一步看一步。", dimension:4},
+            {id:20, text:"我习惯边追剧边写作业，学习和娱乐混在一起更轻松。（反向题）", dimension:4},
+            // A/O维度
+            {id:21, text:"选课系统开放时，我能快速选定课程，不反复纠结。", dimension:5},
+            {id:22, text:"选班干部前，我会反复对比利弊，迟迟做不了决定。", dimension:5},
+            {id:23, text:"考试时剩最后10分钟，我能快速选完没做的题，不犹豫。", dimension:5},
+            {id:24, text:"哪怕快迟到了，我也会纠结穿哪件衣服，不愿仓促出门。", dimension:5},
+            {id:25, text:"小组作业分工，我会快速定好自己的任务，而非反复讨论。", dimension:5},
+            // H/C维度
+            {id:26, text:"和舍友相处，我会主动分享开心/难过的事，不藏情绪。", dimension:6},
+            {id:27, text:"哪怕考试没考好，我也不会表露情绪，假装没事。", dimension:6},
+            {id:28, text:"看到同学搬书不方便，我会主动上前帮忙。", dimension:6},
+            {id:29, text:"我很少和同学说心事，哪怕压力大也自己扛。", dimension:6},
+            {id:30, text:"同学生病，我会默默帮他带饭/抄笔记，而非只说“多喝热水”。", dimension:6}
+        ];
+
+        // 人格解读库
+        const INTERPRETATIONS = {
+            "INFJ-AH": "强直觉+温暖果断型，善于洞察同学/老师的需求，决策坚定，适合担任班长/社团负责人，或选择心理学、教育学等专业。",
+            "INFJ-AC": "强直觉+高冷果断型，洞察力强且边界清晰，适合做学习委员/科研助理，或选择战略管理、数据分析等专业。",
+            "ENTP-AC": "外向直觉+思考果断型，思维活跃，喜欢挑战规则，适合组织校园活动/创业比赛，或选择市场营销、创意设计等专业。",
+            "ENTP-AH": "外向直觉+思考温暖型，脑洞大且善于沟通，适合做校园主持人/辩论队队长，或选择新闻传播、产品设计等专业。",
+            "ISFP-OC": "内向实感+情感纠结+高冷，注重细节，不善表达，适合专注于绘画/手工/编程等独立创作，或选择设计类、工科专业。",
+            "ISFP-AH": "内向实感+情感果断+温暖，动手能力强且共情，适合做志愿者/校园公益负责人，或选择护理学、康复治疗等专业。",
+            "ESFJ-HA": "外向实感+情感判断+温暖果断，擅长协调人际关系，适合做宿舍长/学生会干事，或选择人力资源、行政管理等专业。",
+            "ESFJ-OC": "外向实感+情感判断+高冷纠结，善于统筹但不擅共情，适合做考场监督员/活动执行，或选择物流管理、档案学等专业。",
+            "default": "你的人格类型展现出独特的校园适配性，建议结合自身维度倾向选择适合的学习方式和校园角色，比如根据能量来源维度选择社交型或独立型的社团/学习小组。"
+        };
+
+        // 全局变量
+        let currentIdx = 0;
+        let answers = {};
+        let result = null;
+
+        // 初始化页面
+        function initPage() {
+            showPage("welcome-page");
+            loadQuestion();
+        }
+
+        // 显示指定页面
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // 开始测评
+        function startTest() {
+            showPage("question-page");
+            currentIdx = 0;
+            answers = {};
+            loadQuestion();
+        }
+
+        // 加载当前题目
+        function loadQuestion() {
+            const q = QUESTIONS[currentIdx];
+            document.getElementById("question-text").textContent = `Q${q.id}：${q.text}`;
+            document.getElementById("progress-text").textContent = `进度：${currentIdx+1}/${QUESTIONS.length}`;
+
+            // 重置评分选择
+            document.querySelectorAll('input[name="score"]').forEach(radio => {
+                radio.checked = false;
+            });
+
+            // 恢复已选答案
+            if (answers[q.id]) {
+                document.getElementById(`score${answers[q.id]}`).checked = true;
+            }
+
+            // 更新按钮状态
+            document.getElementById("prev-btn").disabled = currentIdx === 0;
+            document.getElementById("next-btn").textContent = currentIdx === QUESTIONS.length - 1 ? "提交测评" : "下一题";
+        }
+
+        // 上一题
+        function prevQuestion() {
+            saveAnswer();
+            currentIdx--;
+            loadQuestion();
+        }
+
+        // 下一题/提交
+        function nextQuestion() {
+            if (!saveAnswer()) {
+                alert("请选择1-5分的评分！");
+                return;
+            }
+
+            if (currentIdx === QUESTIONS.length - 1) {
+                // 计算结果
+                calculateResult();
+                // 显示结果页
+                showResult();
+            } else {
+                currentIdx++;
+                loadQuestion();
+            }
+        }
+
+        // 保存当前答案
+        function saveAnswer() {
+            const selected = document.querySelector('input[name="score"]:checked');
+            if (!selected) return false;
+
+            const qId = QUESTIONS[currentIdx].id;
+            answers[qId] = parseInt(selected.value);
+            return true;
+        }
+
+        // 计算测评结果
+        function calculateResult() {
+            // 维度总分统计
+            const dimScores = {1:0,2:0,3:0,4:0,5:0,6:0};
+            QUESTIONS.forEach(q => {
+                dimScores[q.dimension] += answers[q.id] || 3;
+            });
+
+            // 维度倾向判断
+            const e_i = dimScores[1] >= 15 ? "E" : "I"; // 简化临界值（适配30题版本）
+            const s_n = dimScores[2] >= 15 ? "S" : "N";
+            const t_f = dimScores[3] >= 15 ? "T" : "F";
+            const j_p = dimScores[4] >= 15 ? "J" : "P";
+            const a_o = dimScores[5] >= 15 ? "A" : "O";
+            const h_c = dimScores[6] >= 15 ? "H" : "C";
+
+            // 生成MBTI类型
+            const mbtiType = `${e_i}${s_n}${t_f}${j_p}-${a_o}${h_c}`;
+
+            // 获取解读
+            const interpret = INTERPRETATIONS[mbtiType] || INTERPRETATIONS.default;
+
+            // 保存结果
+            result = {
+                type: mbtiType,
+                scores: dimScores,
+                interpret: interpret
+            };
+        }
+
+        // 显示结果页
+        function showResult() {
+            showPage("result-page");
+
+            // 填充结果内容
+            document.getElementById("mbti-type").textContent = `你的人格类型：${result.type}`;
+
+            // 维度得分
+            let scoreHtml = "";
+            for (let [key, name] of Object.entries(DIMENSION_NAMES)) {
+                scoreHtml += `<div>${name}：${result.scores[key]}</div>`;
+            }
+            document.getElementById("dimension-scores").innerHTML = scoreHtml;
+
+            // 人格解读
+            document.getElementById("mbti-interpret").textContent = result.interpret;
+
+            // 绘制雷达图
+            drawRadarChart();
+        }
+
+        // 绘制雷达图
+        function drawRadarChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            // 准备数据
+            const labels = ["能量来源","认知方式","决策方式","生活方式","行事风格","人际温度"];
+            const scores = [
+                result.scores[1], result.scores[2], result.scores[3],
+                result.scores[4], result.scores[5], result.scores[6]
+            ];
+            // 归一化到1-5分
+            const maxScores = [15,15,15,15,15,15]; // 适配30题版本（每题5分，5题满分25，简化为15）
+            const normScores = scores.map((s, i) => (s / maxScores[i]) * 5);
+
+            // 创建雷达图
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '你的维度得分（归一化）',
+                        data: normScores,
+                        backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(52, 152, 219, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { display: true },
+                            suggestedMin: 0,
+                            suggestedMax: 5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'MBTI维度得分雷达图',
+                            font: { size: 16 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 保存报告
+        function saveReport() {
+            if (!result) return;
+
+            // 构建报告内容
+            const content = `
+🎓 学生版MBTI人格测评报告
+生成时间：${new Date().toLocaleString()}
+=============================
+MBTI类型：${result.type}
+
+维度得分：
+${Object.entries(DIMENSION_NAMES).map(([k, v]) => `${v}：${result.scores[k]}`).join('\n')}
+
+人格解读：
+${result.interpret}
+            `.trim();
+
+            // 创建下载链接
+            const blob = new Blob([content], { type: 'text/plain; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MBTI测评报告_${new Date().getTime()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert("测评报告已成功保存！");
+        }
+
+        // 重新测评
+        function restartTest() {
+            currentIdx = 0;
+            answers = {};
+            result = null;
+            showPage("welcome-page");
+        }
+
+        // 页面加载时初始化
+        window.onload = initPage;
+    </script>
+</body>
+</html>
